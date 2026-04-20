@@ -17,10 +17,10 @@ class Blackjack:
         self.losses = self.games - self.wins
         self.pushes = self.games - self.losses
         self.blackjacks = 0
-        self.win_prob = (self.wins / self.games) * 100 if self.games > 0 else 0.0
-        self.loss_prob = 100.00 - self.win_prob
-        self.push_prob = 100.00 - self.loss_prob
-        self.blackjack_prob = self.blackjacks / self.games
+        self.win_prob = (self.wins / self.games) if self.games > 0 else 0.0
+        self.loss_prob = 1.0 - self.win_prob
+        self.push_prob = 1.0 - self.loss_prob
+        self.blackjack_prob = (self.blackjacks / self.games) if self.games > 0 else 0.0
         self.expected_value = (self.blackjack_prob * 1.5) (self.win_prob * 1) + (self.push_prob * 0) + (self.loss_prob * -1)
     
     def _generate_deck(self, qty:int = 6):
@@ -114,7 +114,7 @@ class Blackjack:
                     return 0
                
     def get_winrate(self):
-        return self.win_prob
+        return self.win_prob * 100
     
     def get_ev(self):
         return self.expected_value

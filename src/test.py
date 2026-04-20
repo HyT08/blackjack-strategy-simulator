@@ -10,4 +10,5 @@ while True:
     if round == 1.5: print('--Blackjack--')
     print('----Win----' if round >= 1 else '----Lose----')
     print(f"Winrate: {game.get_winrate()}%")
+    print(f"EV: {game.get_ev()}")
     input("Press Enter for Next Round: ")
