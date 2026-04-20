@@ -9,6 +9,6 @@ while True:
     round = game.run(strategy)
     if round == 1.5: print('--Blackjack--')
     print('----Win----' if round >= 1 else '----Lose----')
-    print(f"Winrate: {game.get_winrate()}%")
+    print(f"Winrate: {game.get_win_prob * 100()}%")
     print(f"EV: {game.get_ev()}")
     input("Press Enter for Next Round: ")
