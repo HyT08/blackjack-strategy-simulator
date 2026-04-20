@@ -12,6 +12,7 @@ class Blackjack:
         self._dealer_hand = []
         self.player_hand = []
         self.games = 0
+        #for the player:
         self.wins = 0
         self.losses = self.games - self.wins
         self.pushes = self.games - self.losses
@@ -20,7 +21,7 @@ class Blackjack:
         self.loss_prob = 100.00 - self.win_prob
         self.push_prob = 100.00 - self.loss_prob
         self.blackjack_prob = self.blackjacks / self.games
-        self.expected_value = (self.blackjack_prob) (self.win_prob * 1) + (self.push_prob * 0) + (self.loss_prob * -1)
+        self.expected_value = (self.blackjack_prob * 1.5) (self.win_prob * 1) + (self.push_prob * 0) + (self.loss_prob * -1)
     
     def _generate_deck(self, qty:int = 6):
         _possible_vals = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
