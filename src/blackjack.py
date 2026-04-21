@@ -3,7 +3,8 @@ import random
 class Simulation:
     def __init__(self, finite_deck:bool=True, num_of_decks:int=6, penetration:float=0.7 , bets_active:bool=False, bankroll:float=10000.00):
         self._finite_deck = finite_deck
-        self.deck = self._generate_deck(num_of_decks) if self._finite_deck else None
+        self._deck_qty = num_of_decks
+        self.deck = self._generate_deck() if self._finite_deck else None
         self._initial_deck_size = len(self.deck)
         self.penetration = penetration
         
@@ -23,11 +24,11 @@ class Simulation:
         self.blackjacks = 0
 
 
-    def _generate_deck(self, qty:int = 6):
+    def _generate_deck(self):
         _possible_vals = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
         deck = []
         for n in _possible_vals:
-            frequency = 16 * qty if n == 10 else 4 * qty
+            frequency = 16 * self._deck_qty if n == 10 else 4 * self._deck_qty
             for i in range(frequency):
                     deck.append(n)
         return deck
@@ -149,7 +150,7 @@ class Simulation:
                 
                 #dealer logic with soft 17
                 else:
-                    while self.calculate_value(self._dealer_hand) < 17:
+                    while self.calculate_value(self._dealer_hand) <= 17:
                             self._dealer_hand.append(self._pull_card())
                             if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
                 
@@ -174,6 +175,17 @@ class Simulation:
                         print(f"EV: {self.get_ev()}")
                     return 1
                 
+                #checking if dealer beat player
+                elif self.calculate_value(self.player_hand) < self.calculate_value(self._dealer_hand):
+                    self.losses += 1
+                    self.is_running = False
+                    if visualize:
+                        print('-----Lose-----')
+                        print(f"Winrate: {self.get_win_prob() * 100}%")
+                        print(f"EV: {self.get_ev()}")
+                    return -1
+                
+                #checking for push
                 else:
                     self.pushes += 1
                     self.is_running = False
@@ -182,6 +194,8 @@ class Simulation:
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return 0
+                
+
                
     def get_win_prob(self):
         return (self.wins / self.games) if self.games > 0 else 0.0
