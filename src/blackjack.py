@@ -55,7 +55,7 @@ class Simulation:
         return self.player_hand
     
     def get_dealer_hand(self, full_hand:bool=False):
-        return self._dealer_hand if full_hand or len(self.player_hand) > 2 else self._dealer_hand[1]
+        return self._dealer_hand if full_hand or len(self.dealer_hand) > 2 else self._dealer_hand[1]
     
     def _check_bust(self, hand):
         return self.calculate_value(hand) > 21
@@ -87,8 +87,18 @@ class Simulation:
                     self._dealer_hand.append(self._pull_card())
                 if visualize: print(f"Dealer: [/, {self._dealer_hand[1]}]")
 
+                if self.calculate_value(self.player_hand) and self.calculate_value(self._dealer_hand) == 21:
+                    self.pushes += 1
+                    self.is_running = False
+                    if visualize:
+                        print('--Player Blackjack!--')
+                        print('-----Push-----')
+                        print(f"Winrate: {self.get_win_prob() * 100}%")
+                        print(f"EV: {self.get_ev()}")
+                    return 0
+                
                 #checking if player has a blackjack
-                if self.calculate_value(self.player_hand) == 21:
+                elif self.calculate_value(self.player_hand) == 21:
                     self.blackjacks += 1
                     self.wins += 1
                     self.is_running = False
@@ -112,7 +122,7 @@ class Simulation:
 
                 #getting player choice
                 while not self._check_bust(self.player_hand):
-                    decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy()
+                    decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy(self)
                     
                     #Hit
                     if decision == 1:
