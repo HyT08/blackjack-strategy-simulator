@@ -84,7 +84,7 @@ class Simulation:
                 #handing 2 cards to the dealer
                 for i in range(2):
                     self._dealer_hand.append(self._pull_card())
-                if visualize: print(f"Dealer: /, {self._dealer_hand[1]}")
+                if visualize: print(f"Dealer: [/, {self._dealer_hand[1]}]")
 
                 #checking if player has a blackjack
                 if self.calculate_value(self.player_hand) == 21:
@@ -92,8 +92,8 @@ class Simulation:
                     self.wins += 1
                     self.is_running = False
                     if visualize:
-                        print('-Player Blackjack!-')
-                        print('----Win----')
+                        print('--Player Blackjack!--')
+                        print('-----Win-----')
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return 1.5
@@ -103,8 +103,8 @@ class Simulation:
                     self.losses += 1
                     self.is_running = False
                     if visualize:
-                        print('-Dealer Blackjack!-')
-                        print('----Lose----')
+                        print('--Dealer Blackjack!--')
+                        print('-----Lose-----')
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return -1
@@ -117,12 +117,12 @@ class Simulation:
                     if decision == 1:
                         self.player_hand.append(self._pull_card())
                         if visualize:
-                            print('Hit')
+                            print('-Hit-')
                             print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
 
                     #Stand
                     elif decision == 0:
-                        if visualize: print('Stand')
+                        if visualize: print('-Stand-')
                         break
                     
                     #Double
@@ -131,39 +131,54 @@ class Simulation:
                             self.player_hand.append(self._pull_card())
                             self.current_bet *= 2
                             if visualize:
-                                print('Double')
+                                print('-Double-')
                                 print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
                             break
                             
-                #checking if player gets busted
+                #checking if player got busted
                 if self._check_bust(self.player_hand):
                     self.losses += 1
                     self.is_running = False
                     if visualize:
                         print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
-                        print('----Lose----')
+                        print('--Player Bust--')
+                        print('-----Lose-----')
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return -1
                 
+                #dealer logic with soft 17
                 else:
                     while self.calculate_value(self._dealer_hand) < 17:
                             self._dealer_hand.append(self._pull_card())
                             if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
                 
-                if self._check_bust(self._dealer_hand) or self.calculate_value(self.player_hand) > self.calculate_value(self._dealer_hand):
+                #checking if dealer got busted
+                if self._check_bust(self._dealer_hand):
                     self.wins += 1
                     self.is_running = False
                     if visualize:
-                        print('----Win----')
+                        print('--Dealer Bust--')
+                        print('-----Win-----')
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return 1
-                else:
-                    self.pushes +=1
+                
+                #checking if player beat dealer
+                elif self.calculate_value(self.player_hand) > self.calculate_value(self._dealer_hand):
+                    self.wins += 1
                     self.is_running = False
                     if visualize:
-                        print('----Push----')
+                        print('-----Win-----')
+                        print(f"Winrate: {self.get_win_prob() * 100}%")
+                        print(f"EV: {self.get_ev()}")
+                    return 1
+                
+                else:
+                    self.pushes += 1
+                    self.is_running = False
+                    if visualize:
+                        print('-----Push-----')
                         print(f"Winrate: {self.get_win_prob() * 100}%")
                         print(f"EV: {self.get_ev()}")
                     return 0
