@@ -1,3 +1,4 @@
+#file to test your strategy
 import blackjack
 
 game = blackjack.Simulation(finite_deck=True, num_of_decks=1, bets_active=False) 
