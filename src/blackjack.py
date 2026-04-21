@@ -55,14 +55,14 @@ class Simulation:
         return self.player_hand
     
     def get_dealer_hand(self, full_hand:bool=False):
-        return self._dealer_hand if full_hand or len(self.dealer_hand) > 2 else self._dealer_hand[1]
+        return self._dealer_hand if full_hand or len(self._dealer_hand) > 2 else self._dealer_hand[1]
     
     def _check_bust(self, hand):
         return self.calculate_value(hand) > 21
 
     #runs a single round
     def run(self, strategy:callable = None, visualize:bool = True):
-        self.deck = self._generate_deck() if len(self.deck) < int(self._initial_deck_size * self.penetration) else self.deck
+        if self._finite_deck: self.deck = self._generate_deck() if len(self.deck) < int(self._initial_deck_size * self.penetration) else self.deck
         self._dealer_hand.clear()
         self.player_hand.clear()
         self.is_running = True
@@ -87,7 +87,7 @@ class Simulation:
                     self._dealer_hand.append(self._pull_card())
                 if visualize: print(f"Dealer: [/, {self._dealer_hand[1]}]")
 
-                if self.calculate_value(self.player_hand) and self.calculate_value(self._dealer_hand) == 21:
+                if self.calculate_value(self.player_hand) == 21 and self.calculate_value(self._dealer_hand) == 21:
                     self.pushes += 1
                     self.is_running = False
                     if visualize:
@@ -139,8 +139,9 @@ class Simulation:
                     #Double
                     elif decision == 2:
                         if (self.current_bet * 2) <= self.bankroll:
-                            self.player_hand.append(self._pull_card())
+                            self.bankroll -= self.current_bet
                             self.current_bet *= 2
+                            self.player_hand.append(self._pull_card())
                             if visualize:
                                 print('-Double-')
                                 print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
@@ -160,7 +161,7 @@ class Simulation:
                 
                 #dealer logic with soft 17
                 else:
-                    while self.calculate_value(self._dealer_hand) <= 17:
+                    while self.calculate_value(self._dealer_hand) < 17:
                             self._dealer_hand.append(self._pull_card())
                             if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
                 
