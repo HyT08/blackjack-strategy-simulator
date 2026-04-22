@@ -1,7 +1,7 @@
 import random
 
 class Simulation:
-    def __init__(self, finite_deck:bool=True, num_of_decks:int=6, penetration:float=0.7 , bets_active:bool=False, bankroll:float=10000.00):
+    def __init__(self, finite_deck:bool=True, num_of_decks:int=6, penetration:float=0.7 , bets_active:bool=False, bankroll:float=10000.00, dealer_hit_17:bool = False):
         self._finite_deck = finite_deck
         self._deck_qty = num_of_decks
         self.deck = self._generate_deck() if self._finite_deck else None
@@ -15,6 +15,7 @@ class Simulation:
         
         self._dealer_hand = []
         self.player_hand = []
+        self._dealer_hit_17 = dealer_hit_17
         self.games = 0
         
         #track player performance:
@@ -162,6 +163,10 @@ class Simulation:
                 #dealer logic with soft 17
                 else:
                     while self.calculate_value(self._dealer_hand) < 17:
+                            self._dealer_hand.append(self._pull_card())
+                            if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
+                    if self.calculate_value(self.deal) == 17:
+                        if self._dealer_hit_17: 
                             self._dealer_hand.append(self._pull_card())
                             if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
                 
