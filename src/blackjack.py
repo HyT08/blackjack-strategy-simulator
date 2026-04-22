@@ -139,7 +139,7 @@ class Simulation:
                     
                     #Double
                     elif decision == 2:
-                        if (self.current_bet * 2) <= self.bankroll:
+                        if (self.current_bet * 2) <= self.bankroll and len(self.player_hand) == 2:
                             self.bankroll -= self.current_bet
                             self.current_bet *= 2
                             self.player_hand.append(self._pull_card())
