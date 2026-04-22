@@ -1,7 +1,7 @@
 #file to test your strategy
 import blackjack
 
-game = blackjack.Simulation(finite_deck=True, num_of_decks=1, bets_active=False) 
+game = blackjack.Simulation(finite_deck=True, num_of_decks=1, bets_active=True, bankroll=500) 
 
 def strategy():
     game.bet(50)
