@@ -4,6 +4,7 @@ import blackjack
 game = blackjack.Simulation(finite_deck=True, num_of_decks=1, bets_active=False) 
 
 def strategy():
+    game.bet(50)
     if game.calculate_value(game.get_player_hand()) < 17:
         return 2 if game.calculate_value(game.get_player_hand()) == 10 else 1
     else: 
