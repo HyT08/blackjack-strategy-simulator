@@ -24,7 +24,10 @@ class Simulation:
         self.total_profit = 0
         
         self._dealer_hand = []
+        self._dealer_hand_val = 0
         self.player_hand = []
+        self.player_hand_val = 0
+
         self._dealer_hit_17 = dealer_hit_17
         self.games = 0
         
@@ -74,14 +77,6 @@ class Simulation:
     def _pull_card(self):
         if self._finite_deck: return self.deck.pop()
         else: return random.choices([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], weights=(4, 4, 4, 4, 4, 4, 4, 4, 16, 4), k=1)[0]
-    
-    def calculate_value(self, hand):
-        total = sum(hand)
-        aces = hand.count(11)
-        while total > 21 and aces > 0:
-            total -= 10
-            aces -= 1
-        return total
 
     def is_soft_hand(self, hand):
         total = sum(hand)
@@ -94,16 +89,22 @@ class Simulation:
     def get_player_hand(self):
         return self.player_hand
     
+    def get_player_hand_val(self):
+        return self.player_hand_val
+    
+    def _get_dealer_hand_val(self):
+        return self._dealer_hand_val
+    
     def get_dealer_hand(self, full_hand:bool=False):
         if full_hand or len(self._dealer_hand) > 2: return self._dealer_hand  
         elif len(self._dealer_hand) == 2: return self._dealer_hand[1]
         else: return None
     
-    def _check_bust(self, hand):
-        return self.calculate_value(hand) > 21
+    def _check_bust(self, hand_val):
+        return hand_val > 21
 
     #runs a single round
-    def run(self, strategy:callable = None, visualize:bool = True):
+    def run(self, strategy:callable=None, visualize:bool=False):
         if self._finite_deck:
             if len(self.deck) < int(self._initial_deck_size * self.penetration):
                 self.deck = self._generate_deck()
@@ -113,10 +114,12 @@ class Simulation:
         self.player_hand.clear()
         self.is_running = False
         self.doubled = False
+        self.player_hand_val = 0
+        self._dealer_hand_val = 0
 
         #Bet Logic
         if callable(strategy):
-            strategy()
+            strategy(self)
         if (self._bets_active and self.current_bet > 0) or not self._bets_active:
             if visualize: print(f'Bankroll: {self.bankroll}')
             if strategy is None or not callable(strategy):
@@ -129,15 +132,23 @@ class Simulation:
 
             #handing 2 cards to the player
             for i in range(2):
-                self.player_hand.append(self._pull_card())
+                card = self._pull_card()
+                self.player_hand.append(card)
+                self.player_hand_val += card
+                if self.player_hand_val > 21 and 11 in self.player_hand:
+                    self.player_hand_val -= 10
             if visualize: print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
                 
             #handing 2 cards to the dealer
             for i in range(2):
-                self._dealer_hand.append(self._pull_card())
+                card = self._pull_card()
+                self._dealer_hand.append(card)
+                self._dealer_hand_val += card
+                if self._dealer_hand_val > 21 and 11 in self.player_hand:
+                    self._dealer_hand_val -= 10
             if visualize: print(f"Dealer: [/, {self._dealer_hand[1]}]")
 
-            if self.calculate_value(self.player_hand) == 21 and self.calculate_value(self._dealer_hand) == 21:
+            if self.player_hand_val == 21 and self._dealer_hand_val == 21:
                 if self._performance_mode: self.pushes += 1
                 else: self.player_results.append(0)
                 self.player_blackjacks += 1
@@ -153,7 +164,7 @@ class Simulation:
                 return 0
                 
             #checking if player has a blackjack
-            elif self.calculate_value(self.player_hand) == 21:
+            elif self.player_hand_val == 21:
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(self._blackjack_payout)
                 self.player_blackjacks += 1
@@ -169,7 +180,7 @@ class Simulation:
                 return self._blackjack_payout
                 
             #checking if dealer has a blackjack
-            elif self.calculate_value(self._dealer_hand) == 21:
+            elif self._dealer_hand_val == 21:
                 if self._performance_mode: self.player_losses += 1 
                 else: self.player_results.append(-1)
                 self.dealer_blackjacks += 1
@@ -184,18 +195,22 @@ class Simulation:
                 return -1
 
             #getting player choice
-            while not self._check_bust(self.player_hand):
-                decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy()
+            while not self._check_bust(self.player_hand_val):
+                decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy(self)
                 
                 if decision not in (0, 1, 2):
                     raise ValueError(f"Invalid strategy decision: {decision}. Expected 0, 1 or 2.")
                 
                 #Hit
                 elif decision == 1:
-                    self.player_hand.append(self._pull_card())
+                    card = self._pull_card()
+                    self.player_hand.append(card)
+                    self.player_hand_val += card
+                    if self.player_hand_val > 21 and 11 in self.player_hand:
+                        self.player_hand_val -= 10
                     if visualize:
                         print('-Hit-')
-                        print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
+                        print(f"Player: {self.player_hand} = {self.player_hand_val}")
                 
                 #Double
                 elif decision == 2:
@@ -203,10 +218,14 @@ class Simulation:
                         self.bankroll -= self.current_bet
                         self.current_bet *= 2
                         self.doubled = True
-                        self.player_hand.append(self._pull_card())
+                        card = self._pull_card()
+                        self.player_hand.append(card)
+                        self.player_hand_val += card
+                        if self.player_hand_val > 21 and 11 in self.player_hand:
+                            self.player_hand_val -= 10
                         if visualize:
                             print('-Double-')
-                            print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
+                            print(f"Player: {self.player_hand} = {self.player_hand_val}")
                         break
                     continue
 
@@ -216,13 +235,13 @@ class Simulation:
                     break
                         
             #checking if player got busted
-            if self._check_bust(self.player_hand):
+            if self._check_bust(self.player_hand_val):
                 if self._performance_mode: self.player_losses += 1
                 else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self.is_running = False
                 self.total_profit -= self.current_bet
                 if visualize:
-                    print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
+                    print(f"Dealer: {self._dealer_hand} = {self._dealer_hand_val}")
                     print('--Player Bust--')
                     print('-----Lose-----')
                     if self._bets_active: print(f'Bankroll: {self.bankroll}')
@@ -232,12 +251,16 @@ class Simulation:
                 
             #dealer logic with soft 17
             else:
-                while self.calculate_value(self._dealer_hand) < 17 or (self.calculate_value(self._dealer_hand) == 17 and self.is_soft_hand(self._dealer_hand) and self._dealer_hit_17):
-                    self._dealer_hand.append(self._pull_card())
-                    if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
+                while self._dealer_hand_val < 17 or (self._dealer_hand_val == 17 and self.is_soft_hand(self._dealer_hand) and self._dealer_hit_17):
+                    card = self._pull_card()
+                    self._dealer_hand.append(card)
+                    self._dealer_hand_val += card
+                    if self._dealer_hand_val > 21 and 11 in self._dealer_hand:
+                        self._dealer_hand_val -= 10
+                    if visualize: print(f"Dealer: {self._dealer_hand} = {self._dealer_hand_val}")
 
             #checking if dealer got busted
-            if self._check_bust(self._dealer_hand):
+            if self._check_bust(self._dealer_hand_val):
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
                 self.is_running = False
@@ -252,7 +275,7 @@ class Simulation:
                 return 1
                 
             #checking if player beat dealer
-            elif self.calculate_value(self.player_hand) > self.calculate_value(self._dealer_hand):
+            elif self.player_hand_val > self._dealer_hand_val:
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
                 self.is_running = False
@@ -266,7 +289,7 @@ class Simulation:
                 return 1
                 
             #checking if dealer beat player
-            elif self.calculate_value(self.player_hand) < self.calculate_value(self._dealer_hand):
+            elif self.player_hand_val < self._dealer_hand_val:
                 if self._performance_mode: self.player_losses += 1
                 else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self.is_running = False
