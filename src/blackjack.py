@@ -14,6 +14,7 @@ class Simulation:
         self._initial_deck_size = len(self.deck) if finite_deck else 0
         self.penetration = penetration
         
+        self.initial_bankroll = bankroll
         self.bankroll = bankroll
         self._bets_active = bets_active
         self.is_running = False
@@ -55,6 +56,10 @@ class Simulation:
             self.current_bet = min(amount, self.bankroll)
             self.bankroll -= self.current_bet
         return self.current_bet
+    
+    #reset bankroll to allow multiple simulation with the same conditions
+    def _reset_bankroll(self):
+        self.bankroll = self.initial_bankroll
     
     def hit(self):
         if self.is_running: return 1
