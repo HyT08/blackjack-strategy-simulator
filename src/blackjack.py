@@ -11,7 +11,7 @@ class Simulation:
         self._finite_deck = finite_deck
         self._deck_qty = num_of_decks
         self.deck = self._generate_deck() if self._finite_deck else None
-        self._shuffle_deck()
+        if self._finite_deck: self._shuffle_deck()
         self._initial_deck_size = len(self.deck) if finite_deck else 0
         self.penetration = penetration
         
@@ -76,11 +76,20 @@ class Simulation:
         else: return random.choices([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], weights=(4, 4, 4, 4, 4, 4, 4, 4, 16, 4), k=1)[0]
     
     def calculate_value(self, hand):
-        value = sum(hand)
-        for i in range(hand.count(11)):
-            if value > 21:
-                value -= 10
-        return value
+        total = sum(hand)
+        aces = hand.count(11)
+        while total > 21 and aces > 0:
+            total -= 10
+            aces -= 1
+        return total
+
+    def is_soft_hand(self, hand):
+        total = sum(hand)
+        aces = hand.count(11)
+        while total > 21 and aces > 0:
+            total -= 10
+            aces -= 1
+        return aces > 0
     
     def get_player_hand(self):
         return self.player_hand
@@ -102,7 +111,6 @@ class Simulation:
         if self._performance_mode: visualize = False
         self._dealer_hand.clear()
         self.player_hand.clear()
-        self.games += 1
         self.is_running = False
         self.doubled = False
 
@@ -117,6 +125,7 @@ class Simulation:
             if visualize: print(f'Bet: {self.current_bet}')
 
             self.is_running = True
+            self.games += 1
 
             #handing 2 cards to the player
             for i in range(2):
@@ -178,8 +187,11 @@ class Simulation:
             while not self._check_bust(self.player_hand):
                 decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy()
                 
+                if decision not in (0, 1, 2):
+                    raise ValueError(f"Invalid strategy decision: {decision}. Expected 0, 1 or 2.")
+                
                 #Hit
-                if decision == 1:
+                elif decision == 1:
                     self.player_hand.append(self._pull_card())
                     if visualize:
                         print('-Hit-')
@@ -199,7 +211,7 @@ class Simulation:
                     continue
 
                 #Stand
-                else:
+                elif decision == 0:
                     if visualize: print('-Stand-')
                     break
                         
@@ -220,14 +232,10 @@ class Simulation:
                 
             #dealer logic with soft 17
             else:
-                while self.calculate_value(self._dealer_hand) < 17:
+                while self.calculate_value(self._dealer_hand) < 17 or (self.calculate_value(self._dealer_hand) == 17 and self.is_soft_hand(self._dealer_hand) and self._dealer_hit_17):
                     self._dealer_hand.append(self._pull_card())
                     if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
-                if self.calculate_value(self._dealer_hand) == 17 and self._dealer_hand.count(11) > 0:
-                    if self._dealer_hit_17: 
-                        self._dealer_hand.append(self._pull_card())
-                        if visualize: print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
-                
+
             #checking if dealer got busted
             if self._check_bust(self._dealer_hand):
                 if self._performance_mode: self.player_wins += 1
@@ -285,19 +293,18 @@ class Simulation:
                 
 
     def get_win_prob(self, wins):
-        return (wins / self.games) if self.games > 0 else 0.0
+        return (wins / self.games) if self.games > 0 else 0
     
     def get_loss_prob(self, losses):
-        return (losses / self.games) if self.games > 0 else 0.0
+        return (losses / self.games) if self.games > 0 else 0
     
     def get_push_prob(self, pushes):
-        return (pushes / self.games) if self.games > 0 else 0.0
+        return (pushes / self.games) if self.games > 0 else 0
     
     def get_blackjack_prob(self, blackjacks):
-        return (blackjacks / self.games) if self.games > 0 else 0.0
+        return (blackjacks / self.games) if self.games > 0 else 0
     
     def get_player_ev(self):
         if self._performance_mode:
             return self.total_profit / self.games if self.games > 0 else 0 #if performance mode is active only a single EV value is returned
-        else:
-            return np.mean(self.player_results) if self.games > 0 else 0
+        return np.mean(self.player_results) if len(self.player_results) > 0 else 0
