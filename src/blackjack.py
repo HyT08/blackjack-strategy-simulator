@@ -4,13 +4,14 @@ import numpy as np
 class Simulation:
     def __init__(self, performance_mode:bool=False, finite_deck:bool=True, 
                  num_of_decks:int=6, penetration:float=0.7 , 
-                 bets_active:bool=True, bankroll:float=10000.00, 
+                 bets_active:bool=True, bankroll:float=10000, 
                  dealer_hit_17:bool=True, blackjack_payout:float=1.5):
         
         self._performance_mode = performance_mode #performance mode for allowing higher number of simulations
         self._finite_deck = finite_deck
         self._deck_qty = num_of_decks
         self.deck = self._generate_deck() if self._finite_deck else None
+        self._shuffle_deck()
         self._initial_deck_size = len(self.deck) if finite_deck else 0
         self.penetration = penetration
         
@@ -205,7 +206,7 @@ class Simulation:
             #checking if player got busted
             if self._check_bust(self.player_hand):
                 if self._performance_mode: self.player_losses += 1
-                else: self.player_results.append(-2) if self.double else self.player_results.append(-1)
+                else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self.is_running = False
                 self.total_profit -= self.current_bet
                 if visualize:
@@ -230,7 +231,7 @@ class Simulation:
             #checking if dealer got busted
             if self._check_bust(self._dealer_hand):
                 if self._performance_mode: self.player_wins += 1
-                else: self.player_results.append(2) if self.double else self.player_results.append(1)
+                else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
                 self.is_running = False
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
@@ -245,7 +246,7 @@ class Simulation:
             #checking if player beat dealer
             elif self.calculate_value(self.player_hand) > self.calculate_value(self._dealer_hand):
                 if self._performance_mode: self.player_wins += 1
-                else: self.player_results.append(2) if self.double else self.player_results.append(1)
+                else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
                 self.is_running = False
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
@@ -259,7 +260,7 @@ class Simulation:
             #checking if dealer beat player
             elif self.calculate_value(self.player_hand) < self.calculate_value(self._dealer_hand):
                 if self._performance_mode: self.player_losses += 1
-                else: self.player_results.append(-2) if self.double else self.player_results.append(-1)
+                else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self.is_running = False
                 self.total_profit -= self.current_bet
                 if visualize:
@@ -299,4 +300,4 @@ class Simulation:
         if self._performance_mode:
             return self.total_profit / self.games if self.games > 0 else 0 #if performance mode is active only a single EV value is returned
         else:
-            return np.mean(self.player_results)
+            return np.mean(self.player_results) if self.games > 0 else 0
