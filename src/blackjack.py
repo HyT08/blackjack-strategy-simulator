@@ -2,12 +2,16 @@ import random
 import numpy as np
 
 class Simulation:
-    def __init__(self, performance_mode:bool=False, finite_deck:bool=True, num_of_decks:int=6, penetration:float=0.7 , bets_active:bool=False, bankroll:float=10000.00, dealer_hit_17:bool=False, blackjack_payout:float=1.5):
+    def __init__(self, performance_mode:bool=False, finite_deck:bool=True, 
+                 num_of_decks:int=6, penetration:float=0.7 , 
+                 bets_active:bool=True, bankroll:float=10000.00, 
+                 dealer_hit_17:bool=True, blackjack_payout:float=1.5):
+        
         self._performance_mode = performance_mode #performance mode for allowing higher number of simulations
         self._finite_deck = finite_deck
         self._deck_qty = num_of_decks
         self.deck = self._generate_deck() if self._finite_deck else None
-        self._initial_deck_size = len(self.deck)
+        self._initial_deck_size = len(self.deck) if finite_deck else 0
         self.penetration = penetration
         
         self.bankroll = bankroll
@@ -41,6 +45,9 @@ class Simulation:
             for i in range(frequency):
                 deck.append(n)
         return deck
+    
+    def _shuffle_deck(self):
+        return random.shuffle(self.deck)
 
     #function to allow a strategy to bet
     def bet(self, amount):
@@ -59,7 +66,7 @@ class Simulation:
         if self.is_running and len(self.player_hand) == 2: return 2
     
     def _pull_card(self):
-        if self._finite_deck: return self.deck.pop(random.randrange(0, len(self.deck)))
+        if self._finite_deck: return self.deck.pop()
         else: return random.choices([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], weights=(4, 4, 4, 4, 4, 4, 4, 4, 16, 4), k=1)[0]
     
     def calculate_value(self, hand):
@@ -82,13 +89,16 @@ class Simulation:
 
     #runs a single round
     def run(self, strategy:callable = None, visualize:bool = True):
-        if self._finite_deck: self.deck = self._generate_deck() if len(self.deck) < int(self._initial_deck_size * self.penetration) else self.deck
+        if self._finite_deck:
+            if len(self.deck) < int(self._initial_deck_size * self.penetration):
+                self.deck = self._generate_deck()
+                self._shuffle_deck()
         if self._performance_mode: visualize = False
         self._dealer_hand.clear()
         self.player_hand.clear()
         self.games += 1
         self.is_running = False
-        self.double = False
+        self.doubled = False
 
         #Bet Logic
         if callable(strategy):
@@ -122,7 +132,7 @@ class Simulation:
                 if visualize:
                     print('--Player + Dealer Blackjack!--')
                     print('-----Push-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")
                     print(f"EV: {self.get_player_ev()}")
                 return 0
@@ -138,7 +148,7 @@ class Simulation:
                 if visualize:
                     print('--Player Blackjack!--')
                     print('-----Win-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")
                     print(f"EV: {self.get_player_ev()}")
                 return self._blackjack_payout
@@ -153,7 +163,7 @@ class Simulation:
                 if visualize:
                     print('--Dealer Blackjack!--')
                     print('-----Lose-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")
                     print(f"EV: {self.get_player_ev()}")
                 return -1
@@ -168,24 +178,24 @@ class Simulation:
                     if visualize:
                         print('-Hit-')
                         print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
-
-                #Stand
-                elif decision == 0:
-                    if visualize: print('-Stand-')
-                    break
                 
                 #Double
                 elif decision == 2:
                     if (self.current_bet * 2) <= self.bankroll:
                         self.bankroll -= self.current_bet
                         self.current_bet *= 2
-                        self.double = True
+                        self.doubled = True
                         self.player_hand.append(self._pull_card())
                         if visualize:
                             print('-Double-')
                             print(f"Player: {self.player_hand} = {self.calculate_value(self.player_hand)}")
                         break
                     continue
+
+                #Stand
+                else:
+                    if visualize: print('-Stand-')
+                    break
                         
             #checking if player got busted
             if self._check_bust(self.player_hand):
@@ -197,7 +207,7 @@ class Simulation:
                     print(f"Dealer: {self._dealer_hand} = {self.calculate_value(self._dealer_hand)}")
                     print('--Player Bust--')
                     print('-----Lose-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")                        
                     print(f"EV: {self.get_player_ev()}")
                 return -1
@@ -222,7 +232,7 @@ class Simulation:
                 if visualize:
                     print('--Dealer Bust--')
                     print('-----Win-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")                        
                     print(f"EV: {self.get_player_ev()}")
                 return 1
@@ -236,7 +246,7 @@ class Simulation:
                 self.total_profit += self.current_bet
                 if visualize:
                     print('-----Win-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")                        
                     print(f"EV: {self.get_player_ev()}")
                 return 1
@@ -249,7 +259,7 @@ class Simulation:
                 self.total_profit -= self.current_bet
                 if visualize:
                     print('-----Lose-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")                        
                     print(f"EV: {self.get_player_ev()}")
                 return -1
@@ -262,7 +272,7 @@ class Simulation:
                 self.bankroll += self.current_bet
                 if visualize:
                     print('-----Push-----')
-                    if self.bets_active: print(f'Bankroll: {self.bankroll}')
+                    if self._bets_active: print(f'Bankroll: {self.bankroll}')
                     print(f"Winrate: {self.get_win_prob(self.player_wins if self._performance_mode else (self.player_results.count(1) + self.player_results.count(2) + self.player_results.count(1.5))) * 100}%")
                     print(f"EV: {self.get_player_ev()}")
                 return 0
@@ -282,6 +292,6 @@ class Simulation:
     
     def get_player_ev(self):
         if self._performance_mode:
-            return self.total_profit / self.games if self.games > 0 else 0
+            return self.total_profit / self.games if self.games > 0 else 0 #if performance mode is active only a single EV value is returned
         else:
-            return np.mean(self.player_results) #if performance mode is active only a single EV value is returned
+            return np.mean(self.player_results)
