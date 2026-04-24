@@ -1,3 +1,4 @@
+#add your strategies here:
 def test(simulation):
     simulation.bet(50)
     value = simulation.get_player_hand_val()

@@ -2,10 +2,28 @@ import random
 import numpy as np
 
 class Simulation:
+    #available cards for infinite deck
+    VALUES = (
+                [2]*4  + [3]*4  + [4]*4  + [5]*4  + [6]*4 +
+                [7]*4  + [8]*4  + [9]*4  + [10]*16 + [11]*4
+            )
+
     def __init__(self, performance_mode:bool=False, finite_deck:bool=True, 
                  num_of_decks:int=6, penetration:float=0.7 , 
                  bets_active:bool=True, bankroll:float=10000, 
                  dealer_hit_17:bool=True, blackjack_payout:float=1.5):
+        
+        #saving configs to allow for multiple simulations with the same configs
+        self._config = dict(
+            performance_mode=performance_mode,
+            finite_deck=finite_deck,
+            num_of_decks=num_of_decks,
+            penetration=penetration,
+            bets_active=bets_active,
+            bankroll=bankroll,
+            dealer_hit_17=dealer_hit_17,
+            blackjack_payout=blackjack_payout
+        )
         
         self._performance_mode = performance_mode #performance mode for allowing higher number of simulations
         self._finite_deck = finite_deck
@@ -14,7 +32,6 @@ class Simulation:
         self._dealer_hit_17 = dealer_hit_17
         self._blackjack_payout = blackjack_payout
         self._bets_active = bets_active
-
         self.deck = self._generate_deck() if self._finite_deck else None
         if self._finite_deck:
             self._shuffle_deck()
@@ -85,8 +102,10 @@ class Simulation:
     
     def _pull_card(self):
         if self._finite_deck: return self.deck.pop()
-        else: return random.choices([2, 3, 4, 5, 6, 7, 8, 9, 10, 11], weights=(4, 4, 4, 4, 4, 4, 4, 4, 16, 4), k=1)[0]
-    
+        else:
+            #choose random card from all available cards
+            return self.VALUES[random.randint(0, 51)]
+
     def get_player_hand(self):
         return self.player_hand if not self._performance_mode else None
     
@@ -348,8 +367,8 @@ class Simulation:
     def get_loss_prob(self, losses):
         return (losses / self.games) if self.games > 0 else 0
     
-    def get_push_prob(self, pushes):
-        return (pushes / self.games) if self.games > 0 else 0
+    def get_push_prob(self):
+        return (self.pushes / self.games) if self.games > 0 else 0
     
     def get_blackjack_prob(self, blackjacks):
         return (blackjacks / self.games) if self.games > 0 else 0
@@ -358,3 +377,9 @@ class Simulation:
         if self._performance_mode:
             return self.total_profit / self.games if self.games > 0 else 0 #if performance mode is active only a single EV value is returned
         return np.mean(self.player_results) if len(self.player_results) > 0 else 0
+    
+    #cloning simulation
+    def clone(self, **overrides):
+        config = self._config.copy()
+        config.update(overrides)
+        return Simulation(**config)
