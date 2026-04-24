@@ -45,7 +45,8 @@ class Simulation:
         self.games = 0
 
         self.current_bet = 0
-        self.is_running = False
+        self.total_bet = 0
+        self.phase = None
         self.doubled = False
 
         self.player_hand_val = 0
@@ -112,10 +113,12 @@ class Simulation:
     def get_player_hand_val(self):
         return self.player_hand_val
     
-    def _get_dealer_hand_val(self):
+    def _get_dealer_hand_val(self, full_hand:bool=False):
+        if full_hand or self._dealer_revealed:
+            return self._dealer_hand_val - self._dealer_holecard
         return self._dealer_hand_val
     
-    def get_dealer_hand(self, full_hand=False):
+    def get_dealer_hand(self, full_hand:bool=False):
         if full_hand or self._dealer_revealed:
             return (self._dealer_holecard, self._dealer_upcard)
         return self._dealer_upcard
@@ -145,16 +148,20 @@ class Simulation:
         self._dealer_holecard = 0
 
         #Bet Logic
+        self.phase = "bet"
         if callable(strategy):
-            strategy(self)
+             if hasattr(strategy, "bet"):
+                strategy.bet(self)
         if (self._bets_active and self.current_bet > 0) or not self._bets_active:
             if visualize: print(f'Bankroll: {self.bankroll}')
             if strategy is None or not callable(strategy):
                 self.current_bet = min(int(input("Enter Bet: ")), self.bankroll)
                 self.bankroll -= self.current_bet
             if visualize: print(f'Bet: {self.current_bet}')
+            self.total_bet += self.current_bet
+            base_bet = self.current_bet
 
-            self.is_running = True
+            self.phase = "game"
             self.games += 1
 
             #handing 2 cards to the player
@@ -189,7 +196,7 @@ class Simulation:
                 self._dealer_revealed = True
                 self.player_blackjacks += 1
                 self.dealer_blackjacks += 1
-                self.is_running = False
+                self.phase = None
                 self.bankroll += self.current_bet
                 if visualize:
                     print('--Player + Dealer Blackjack!--')
@@ -204,9 +211,9 @@ class Simulation:
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(self._blackjack_payout)
                 self.player_blackjacks += 1
-                self.is_running = False
+                self.phase = None
                 self.bankroll += self.current_bet + self.current_bet * self._blackjack_payout
-                self.total_profit += self.current_bet * self._blackjack_payout
+                self.total_profit += base_bet * self._blackjack_payout
                 if visualize:
                     print('--Player Blackjack!--')
                     print('-----Win-----')
@@ -220,7 +227,7 @@ class Simulation:
                 if self._performance_mode: self.player_losses += 1 
                 else: self.player_results.append(-1)
                 self.dealer_blackjacks += 1
-                self.is_running = False
+                self.phase = None
                 self.total_profit -= self.current_bet
                 if visualize:
                     print('--Dealer Blackjack!--')
@@ -232,7 +239,8 @@ class Simulation:
 
             #getting player choice
             while self.player_hand_val <= 21:
-                decision =  int(input("Hit(1) or Stand(0): ")) if strategy is None or not callable(strategy) else strategy(self)
+                if strategy is None or not callable(strategy): decision =  int(input("Hit(1) or Stand(0): "))  
+                elif callable(strategy) and hasattr(strategy, "play"): strategy.play(self)
                 
                 if decision not in (0, 1, 2):
                     raise ValueError(f"Invalid strategy decision: {decision}. Expected 0, 1 or 2.")
@@ -255,6 +263,7 @@ class Simulation:
                 elif decision == 2:
                     if (self.current_bet * 2) <= self.bankroll:
                         self.bankroll -= self.current_bet
+                        self.total_bet += self.current_bet
                         self.current_bet *= 2
                         self.doubled = True
                         card = self._pull_card()
@@ -281,7 +290,7 @@ class Simulation:
                 if self._performance_mode: self.player_losses += 1
                 else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self._dealer_revealed = True
-                self.is_running = False
+                self.phase = None
                 self.total_profit -= self.current_bet
                 if visualize:
                     print(f"Dealer: ({self._dealer_holecard}, {self._dealer_upcard}) = {self._dealer_hand_val}")
@@ -309,7 +318,7 @@ class Simulation:
             if self._dealer_hand_val > 21:
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
-                self.is_running = False
+                self.phase = None
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
                 if visualize:
@@ -324,7 +333,7 @@ class Simulation:
             elif self.player_hand_val > self._dealer_hand_val:
                 if self._performance_mode: self.player_wins += 1
                 else: self.player_results.append(2) if self.doubled else self.player_results.append(1)
-                self.is_running = False
+                self.phase = None
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
                 if visualize:
@@ -338,7 +347,7 @@ class Simulation:
             elif self.player_hand_val < self._dealer_hand_val:
                 if self._performance_mode: self.player_losses += 1
                 else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
-                self.is_running = False
+                self.phase = None
                 self.total_profit -= self.current_bet
                 if visualize:
                     print('-----Lose-----')
@@ -351,7 +360,7 @@ class Simulation:
             else:
                 if self._performance_mode: self.pushes += 1
                 else: self.player_results.append(0)
-                self.is_running = False
+                self.phase = None
                 self.bankroll += self.current_bet
                 if visualize:
                     print('-----Push-----')

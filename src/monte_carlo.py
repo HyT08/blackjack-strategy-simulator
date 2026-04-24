@@ -16,6 +16,7 @@ def monte_carlo(simulation, strategy, mc_runs: int = 100, bj_rounds: int = 10000
     max_drawdowns = []
     min_bankrolls = []
     total_profits = []
+    total_bets = []
     rois = []
     ruins = 0
 
@@ -70,6 +71,7 @@ def monte_carlo(simulation, strategy, mc_runs: int = 100, bj_rounds: int = 10000
         min_bankrolls.append(min_bankroll)
         final_bankroll = sim.bankroll
         total_profits.append(final_bankroll - initial_bankroll)
+        total_bets.append(sim.total_bet)
         rois.append((final_bankroll - initial_bankroll) / initial_bankroll)
 
         if plot:
@@ -93,6 +95,8 @@ def monte_carlo(simulation, strategy, mc_runs: int = 100, bj_rounds: int = 10000
     print(f"EV (Profit/Hand): {round(ev_mean, 2)}")
     print(f"EV Std Dev: {round(ev_std, 2)}")
     print(f"EV 95% CI: [{round(ev_mean - ci, 2)}, {round(ev_mean + ci, 2)}]")
+    print(f'House Edge: {- round((np.sum(total_profits) / np.sum(total_bets))* 100, 2)}%')
+    print(f'Avg Bet: {np.sum(total_bets) / (mc_runs * bj_rounds)}')
     print(f"Avg Total Profit: {np.mean(total_profits)}")
     print(f"ROI: {round(np.mean(rois) * 100, 2)}%")
     print(f"RoR: {round((ruins / mc_runs) * 100, 2)}")

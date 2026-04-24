@@ -1,7 +1,8 @@
 #add your strategies here:
-def test(simulation):
-    simulation.bet(50)
-    value = simulation.get_player_hand_val()
-    if value < 17:
-        return simulation.hit()
-    return simulation.stand()
+class Strategy:
+    def bet(self, sim):
+        #your bet logic
+        pass
+    def play(self, sim):
+        #your gameplay logic
+        pass
