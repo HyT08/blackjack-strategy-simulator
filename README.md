@@ -67,7 +67,7 @@ return 1
 return 2
 #-> Double (only allowed on the first two cards and if bankroll allows it)
 ```
-At leat one hit or stand return and a bet (if bets=active in the simulation, look at [Testing](https://github.com/HyT08/blackjack-strategy-simulator/edit/main/README.md#testing-a-strategy) for further info) are needed to test the strategy
+At leat one hit or stand return and a bet (if bets=active in the simulation, look at Testing for further info) are needed to test the strategy
 
 #### Performance / Stats (after simulation):
 ```python
@@ -83,7 +83,7 @@ sim.get_blackjack_prob(sim.player_blackjacks)
 #-> returns blackjack probability
 ```
 
-## Testing your strategy
+## Testing
 ### Testing with a Monte Carlo Simulation
 - Open the notebook testing.ipynp
 - Configure the parameters for the blackjack game here:
