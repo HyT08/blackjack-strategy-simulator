@@ -132,5 +132,3 @@ Max Drawdown: -52.96%
 Avg Max Drawdown: -20.4%
 ```
 <img width="572" height="413" alt="image" src="https://github.com/user-attachments/assets/1632e1ea-7a89-4d2e-898a-14464efdf4a2" />
-### Testing manually
-- 
