@@ -15,14 +15,9 @@ class Simulation:
         
         #saving configs to allow for multiple simulations with the same configs
         self._config = dict(
-            performance_mode=performance_mode,
-            finite_deck=finite_deck,
-            num_of_decks=num_of_decks,
-            penetration=penetration,
-            bets_active=bets_active,
-            bankroll=bankroll,
-            dealer_hit_17=dealer_hit_17,
-            blackjack_payout=blackjack_payout
+            performance_mode=performance_mode, finite_deck=finite_deck, num_of_decks=num_of_decks,
+            penetration=penetration, bets_active=bets_active, bankroll=bankroll,
+            dealer_hit_17=dealer_hit_17, blackjack_payout=blackjack_payout
         )
         
         self._performance_mode = performance_mode #performance mode for allowing higher number of simulations
@@ -32,15 +27,20 @@ class Simulation:
         self._dealer_hit_17 = dealer_hit_17
         self._blackjack_payout = blackjack_payout
         self._bets_active = bets_active
-        self.deck = self._generate_deck() if self._finite_deck else None
         if self._finite_deck:
+            self.deck = self._generate_deck()
             self._shuffle_deck()
             self._initial_deck_size = len(self.deck)
         else:
             self._initial_deck_size = 0
+            self.deck = None
 
         self.initial_bankroll = bankroll
         self.bankroll = bankroll
+        self.min_bankroll = bankroll
+        self.peak = bankroll
+        self.drawdown = 0.0
+        self.max_drawdown = 0.0
         self.total_profit = 0
         self.games = 0
 
@@ -92,15 +92,6 @@ class Simulation:
             self.bankroll -= self.current_bet
         return self.current_bet
     
-    def hit(self):
-        if self.is_running: return 1
-    
-    def stand(self):
-        if self.is_running: return 0
-
-    def double(self):
-        if self.is_running and self.player_card_count == 2: return 2
-    
     def _pull_card(self):
         if self._finite_deck: return self.deck.pop()
         else:
@@ -149,17 +140,17 @@ class Simulation:
 
         #Bet Logic
         self.phase = "bet"
-        if callable(strategy):
+        if strategy is not None:
              if hasattr(strategy, "bet"):
                 strategy.bet(self)
         if (self._bets_active and self.current_bet > 0) or not self._bets_active:
             if visualize: print(f'Bankroll: {self.bankroll}')
-            if strategy is None or not callable(strategy):
+            if strategy is None:
                 self.current_bet = min(int(input("Enter Bet: ")), self.bankroll)
                 self.bankroll -= self.current_bet
             if visualize: print(f'Bet: {self.current_bet}')
-            self.total_bet += self.current_bet
             base_bet = self.current_bet
+            self.total_bet += base_bet
 
             self.phase = "game"
             self.games += 1
@@ -170,7 +161,7 @@ class Simulation:
                 if not self._performance_mode: self.player_hand.append(card)
                 self.player_hand_val += card
                 self.player_card_count += 1
-                if card == 11: self.player_aces += 1
+                self.player_aces += (card == 11)
                 if self.player_hand_val > 21 and self.player_aces > 0:
                     self.player_hand_val -= 10
                     self.player_aces -= 1
@@ -181,13 +172,13 @@ class Simulation:
             card = self._pull_card()
             self._dealer_holecard = card
             self._dealer_hand_val += card
-            if card == 11: self._dealer_aces += 1
+            self._dealer_aces += (card == 11)
 
             #upcard:
             card = self._pull_card()
             self._dealer_upcard = card
             self._dealer_hand_val += card
-            if card == 11: self._dealer_aces += 1
+            self._dealer_aces += (card == 11)
             if visualize: print(f"Dealer: [/, {self._dealer_upcard}]")
 
             if self.player_hand_val == 21 and self._dealer_hand_val == 21:
@@ -198,6 +189,7 @@ class Simulation:
                 self.dealer_blackjacks += 1
                 self.phase = None
                 self.bankroll += self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('--Player + Dealer Blackjack!--')
                     print('-----Push-----')
@@ -214,6 +206,7 @@ class Simulation:
                 self.phase = None
                 self.bankroll += self.current_bet + self.current_bet * self._blackjack_payout
                 self.total_profit += base_bet * self._blackjack_payout
+                self.update_metrics()
                 if visualize:
                     print('--Player Blackjack!--')
                     print('-----Win-----')
@@ -229,6 +222,7 @@ class Simulation:
                 self.dealer_blackjacks += 1
                 self.phase = None
                 self.total_profit -= self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('--Dealer Blackjack!--')
                     print('-----Lose-----')
@@ -239,8 +233,10 @@ class Simulation:
 
             #getting player choice
             while self.player_hand_val <= 21:
-                if strategy is None or not callable(strategy): decision =  int(input("Hit(1) or Stand(0): "))  
-                elif callable(strategy) and hasattr(strategy, "play"): strategy.play(self)
+                if strategy is None: 
+                    decision =  int(input("Hit(1) or Stand(0): "))  
+                elif strategy is not None and hasattr(strategy, "play"): 
+                    decision = strategy.play(self)
                 
                 if decision not in (0, 1, 2):
                     raise ValueError(f"Invalid strategy decision: {decision}. Expected 0, 1 or 2.")
@@ -251,7 +247,7 @@ class Simulation:
                     if not self._performance_mode: self.player_hand.append(card)
                     self.player_hand_val += card
                     self.player_card_count += 1
-                    if card == 11: self.player_aces += 1
+                    self.player_aces += (card == 11)
                     if self.player_hand_val > 21 and self.player_aces > 0:
                         self.player_hand_val -= 10
                         self.player_aces -= 1
@@ -261,16 +257,16 @@ class Simulation:
                 
                 #Double
                 elif decision == 2:
-                    if (self.current_bet * 2) <= self.bankroll:
+                    if self.current_bet <= self.bankroll and self.player_card_count == 2:
                         self.bankroll -= self.current_bet
-                        self.total_bet += self.current_bet
-                        self.current_bet *= 2
+                        self.total_bet += base_bet
+                        self.current_bet = base_bet * 2
                         self.doubled = True
                         card = self._pull_card()
                         if not self._performance_mode: self.player_hand.append(card)
                         self.player_hand_val += card
                         self.player_card_count += 1
-                        if card == 11: self.player_aces += 1
+                        self.player_aces += (card == 11)
                         if self.player_hand_val > 21 and self.player_aces > 0:
                             self.player_hand_val -= 10
                             self.player_aces -= 1
@@ -292,6 +288,7 @@ class Simulation:
                 self._dealer_revealed = True
                 self.phase = None
                 self.total_profit -= self.current_bet
+                self.update_metrics()
                 if visualize:
                     print(f"Dealer: ({self._dealer_holecard}, {self._dealer_upcard}) = {self._dealer_hand_val}")
                     print('--Player Bust--')
@@ -308,7 +305,7 @@ class Simulation:
                     card = self._pull_card()
                     if not self._performance_mode: self._dealer_hand.append(card)
                     self._dealer_hand_val += card
-                    if card == 11: self._dealer_aces += 1
+                    self._dealer_aces += (card == 11)
                     if self._dealer_hand_val > 21 and self._dealer_aces > 0:
                         self._dealer_hand_val -= 10
                         self._dealer_aces -= 1
@@ -321,6 +318,7 @@ class Simulation:
                 self.phase = None
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('--Dealer Bust--')
                     print('-----Win-----')
@@ -336,6 +334,7 @@ class Simulation:
                 self.phase = None
                 self.bankroll += self.current_bet * 2
                 self.total_profit += self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('-----Win-----')
                     if self._bets_active: print(f'Bankroll: {self.bankroll}')
@@ -349,6 +348,7 @@ class Simulation:
                 else: self.player_results.append(-2) if self.doubled else self.player_results.append(-1)
                 self.phase = None
                 self.total_profit -= self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('-----Lose-----')
                     if self._bets_active: print(f'Bankroll: {self.bankroll}')
@@ -362,6 +362,7 @@ class Simulation:
                 else: self.player_results.append(0)
                 self.phase = None
                 self.bankroll += self.current_bet
+                self.update_metrics()
                 if visualize:
                     print('-----Push-----')
                     if self._bets_active: print(f'Bankroll: {self.bankroll}')
@@ -386,6 +387,18 @@ class Simulation:
         if self._performance_mode:
             return self.total_profit / self.games if self.games > 0 else 0 #if performance mode is active only a single EV value is returned
         return np.mean(self.player_results) if len(self.player_results) > 0 else 0
+    
+    def get_player_edge(self):
+        return self.total_profit / self.total_bet if self.games > 0 else 0
+    
+    def get_avg_bet(self):
+        return self.total_bet / self.games if self.games > 0 else 0
+    
+    def update_metrics(self):
+        self.min_bankroll = min(self.min_bankroll, self.bankroll)
+        self.peak = max(self.peak, self.bankroll)
+        self.drawdown = (self.bankroll - self.peak) / self.peak
+        self.max_drawdown = min(self.max_drawdown, self.drawdown)
     
     #cloning simulation
     def clone(self, **overrides):
