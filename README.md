@@ -2,7 +2,7 @@
 
 A Python-based Blackjack simulation and strategy evaluation framework.
 
-## The project supports both:
+### The project supports both:
 - an interactive Blackjack Simulation for manual play and small-scale testing
 - a Monte Carlo simulation system for evaluating strategies over a large number of games
 
