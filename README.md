@@ -14,8 +14,8 @@ A Python-based Blackjack simulation and strategy evaluation framework.
 - Betting and doubling functionality
 - Support for custom strategies
 
-The Goal of this project is to create a flexible and extensible framework for analyzing Blackjack strategies under realistic conditions. 
-This project also serves as a foundation for further projects in the field of Quantitative Finance.
+The Goal of this project is to create a flexible framework for analyzing Blackjack strategies under realistic conditions. 
+This project also serves as a foundation for further projects.
 
 ## Installation
 pip install -r requirements.txt
